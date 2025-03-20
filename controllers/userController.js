@@ -14,23 +14,27 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Create user with only the required fields
     const user = await User.create({
       name,
       password,
-      phoneNumber
+      phoneNumber,
+      role: 'user' // Explicitly set role to user for mobile app registrations
     });
 
     // Don't send password in response
-    user.password = undefined;
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     res.status(201).json({
       success: true,
-      data: user
+      data: userResponse
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to register user'
     });
   }
 };
@@ -60,16 +64,18 @@ exports.login = async (req, res) => {
     }
 
     // Don't send password in response
-    user.password = undefined;
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     res.status(200).json({
       success: true,
-      data: user
+      data: userResponse
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to login'
     });
   }
 };
@@ -96,16 +102,18 @@ exports.createAdmin = async (req, res) => {
     });
 
     // Don't send password in response
-    admin.password = undefined;
+    const adminResponse = admin.toObject();
+    delete adminResponse.password;
 
     res.status(201).json({
       success: true,
-      data: admin
+      data: adminResponse
     });
   } catch (error) {
+    console.error('Admin creation error:', error);
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to create admin'
     });
   }
 };
@@ -119,9 +127,10 @@ exports.getAllUsers = async (req, res) => {
       data: users
     });
   } catch (error) {
+    console.error('Get users error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to get users'
     });
   }
 };
@@ -135,9 +144,10 @@ exports.getUserProfile = async (req, res) => {
       data: user
     });
   } catch (error) {
+    console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to get user profile'
     });
   }
 };
