@@ -3,20 +3,19 @@ const User = require('../models/User');
 // Register new user
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phoneNumber } = req.body;
+    const { name, password, phoneNumber } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ phoneNumber });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: 'Email already registered'
+        error: 'Phone number already registered'
       });
     }
 
     const user = await User.create({
       name,
-      email,
       password,
       phoneNumber
     });
@@ -39,10 +38,10 @@ exports.register = async (req, res) => {
 // Login user
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phoneNumber, password } = req.body;
 
     // Get user with password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ phoneNumber }).select('+password +role');
     
     if (!user) {
       return res.status(401).json({
@@ -52,8 +51,8 @@ exports.login = async (req, res) => {
     }
 
     // Check password
-    const isPasswordCorrect = user.checkPassword(password);
-    if (!isPasswordCorrect) {
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
@@ -68,7 +67,7 @@ exports.login = async (req, res) => {
       data: user
     });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: error.message
     });
@@ -78,22 +77,21 @@ exports.login = async (req, res) => {
 // Create admin user
 exports.createAdmin = async (req, res) => {
   try {
-    const { name, email, password, phoneNumber } = req.body;
+    const { name, phoneNumber, password } = req.body;
 
     // Check if admin already exists
-    const existingAdmin = await User.findOne({ role: 'admin' });
+    const existingAdmin = await User.findOne({ phoneNumber });
     if (existingAdmin) {
       return res.status(400).json({
         success: false,
-        error: 'Admin user already exists'
+        error: 'Phone number already registered'
       });
     }
 
     const admin = await User.create({
       name,
-      email,
-      password,
       phoneNumber,
+      password,
       role: 'admin'
     });
 
@@ -115,18 +113,7 @@ exports.createAdmin = async (req, res) => {
 // Get all users (admin only)
 exports.getAllUsers = async (req, res) => {
   try {
-    const { adminEmail } = req.query;
-    
-    // Verify admin
-    const admin = await User.findOne({ email: adminEmail, role: 'admin' });
-    if (!admin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized'
-      });
-    }
-
-    const users = await User.find({ role: 'user' });
+    const users = await User.find();
     
     res.status(200).json({
       success: true,
@@ -144,15 +131,7 @@ exports.getAllUsers = async (req, res) => {
 // Get user profile
 exports.getUserProfile = async (req, res) => {
   try {
-    const { email } = req.params;
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
+    const user = await User.findById(req.user.id);
 
     res.status(200).json({
       success: true,

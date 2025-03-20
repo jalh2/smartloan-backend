@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -9,20 +9,19 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
     trim: true,
     lowercase: true
+  },
+  phoneNumber: {
+    type: String,
+    required: [true, 'Phone number is required'],
+    trim: true,
+    unique: true
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
     select: false // Don't return password in queries by default
-  },
-  phoneNumber: {
-    type: String,
-    required: [true, 'Phone number is required'],
-    trim: true
   },
   role: {
     type: String,
@@ -36,23 +35,17 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', function(next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-
-  const hash = crypto.createHash('sha256');
-  hash.update(this.password + process.env.ENCRYPTION_KEY);
-  this.password = hash.digest('hex');
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-// Method to check password
-userSchema.methods.checkPassword = function(password) {
-  const hash = crypto.createHash('sha256');
-  hash.update(password + process.env.ENCRYPTION_KEY);
-  const hashedPassword = hash.digest('hex');
-  return this.password === hashedPassword;
+// Method to check if password matches
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
 const User = mongoose.model('User', userSchema);

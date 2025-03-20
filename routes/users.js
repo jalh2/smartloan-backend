@@ -18,9 +18,9 @@ router.post('/login', login);
 router.post('/admin/create', createAdmin);
 
 // Get all users (admin only)
-router.get('/all', getAllUsers);
+router.get('/', getAllUsers);
 
 // Get user profile
-router.get('/profile/:email', getUserProfile);
+router.get('/profile', getUserProfile);
 
 module.exports = router;
