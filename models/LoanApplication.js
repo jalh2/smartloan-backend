@@ -54,8 +54,8 @@ const loanApplicationSchema = new mongoose.Schema({
   // Additional fields for loan management
   status: {
     type: String,
-    enum: ['Pending', 'Approved', 'Rejected', 'Paid'],
-    default: 'Pending'
+    enum: ['pending', 'approved', 'rejected', 'awaiting_payment', 'paid'],
+    default: 'pending'
   },
   applicationDate: {
     type: Date,

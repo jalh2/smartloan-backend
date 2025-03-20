@@ -3,16 +3,20 @@ const LoanApplication = require('../models/LoanApplication');
 // Create new loan application
 exports.createLoanApplication = async (req, res) => {
   try {
-    const loanApplication = new LoanApplication(req.body);
+    const loanApplication = new LoanApplication({
+      ...req.body,
+      status: 'pending' // Ensure status is always pending for new applications
+    });
     await loanApplication.save();
     res.status(201).json({
       success: true,
       data: loanApplication
     });
   } catch (error) {
+    console.error('Loan creation error:', error);
     res.status(400).json({
       success: false,
-      error: error.message
+      message: error.message || 'Failed to create loan application'
     });
   }
 };
@@ -23,110 +27,111 @@ exports.getAllLoanApplications = async (req, res) => {
     const loanApplications = await LoanApplication.find()
       .sort({ createdAt: -1 }); // Most recent first
     
+    // Convert all status values to lowercase for consistency
+    const formattedLoans = loanApplications.map(loan => {
+      const loanObj = loan.toObject();
+      if (loanObj.status) {
+        loanObj.status = loanObj.status.toLowerCase();
+      }
+      return loanObj;
+    });
+    
     res.status(200).json({
       success: true,
-      count: loanApplications.length,
-      data: loanApplications
+      count: formattedLoans.length,
+      data: formattedLoans
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      message: error.message
     });
   }
 };
 
 // Get single loan application by reference number
-exports.getLoanApplication = async (req, res) => {
+exports.getLoanByReference = async (req, res) => {
   try {
-    const loanApplication = await LoanApplication.findOne({
-      referenceNumber: req.params.referenceNumber
+    const loanApplication = await LoanApplication.findOne({ 
+      referenceNumber: req.params.referenceNumber 
     });
 
     if (!loanApplication) {
       return res.status(404).json({
         success: false,
-        error: 'Loan application not found'
+        message: 'Loan application not found'
       });
+    }
+
+    // Convert status to lowercase for consistency
+    const loanObj = loanApplication.toObject();
+    if (loanObj.status) {
+      loanObj.status = loanObj.status.toLowerCase();
     }
 
     res.status(200).json({
       success: true,
-      data: loanApplication
+      data: loanObj
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      message: error.message
     });
   }
 };
 
-// Update loan application status
+// Update loan status by reference number
 exports.updateLoanStatus = async (req, res) => {
   try {
-    const { status } = req.body;
-    const loanApplication = await LoanApplication.findOneAndUpdate(
-      { referenceNumber: req.params.referenceNumber },
-      { status },
-      { new: true, runValidators: true }
-    );
+    let { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      });
+    }
+
+    // Convert status to lowercase for consistency
+    status = status.toLowerCase();
+
+    // Validate status
+    const validStatuses = ['pending', 'approved', 'rejected', 'awaiting_payment', 'paid'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+
+    const loanApplication = await LoanApplication.findOne({ 
+      referenceNumber: req.params.referenceNumber 
+    });
 
     if (!loanApplication) {
       return res.status(404).json({
         success: false,
-        error: 'Loan application not found'
+        message: 'Loan application not found'
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: loanApplication
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-};
+    // Update status and save
+    loanApplication.status = status;
+    await loanApplication.save();
 
-// Get loan applications by status
-exports.getLoansByStatus = async (req, res) => {
-  try {
-    const { status } = req.params;
-    const loanApplications = await LoanApplication.find({ status })
-      .sort({ createdAt: -1 });
+    // Convert response status to lowercase for consistency
+    const loanObj = loanApplication.toObject();
+    loanObj.status = loanObj.status.toLowerCase();
 
     res.status(200).json({
       success: true,
-      count: loanApplications.length,
-      data: loanApplications
+      data: loanObj
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
-    });
-  }
-};
-
-// Get user's loan history by contact number
-exports.getUserLoanHistory = async (req, res) => {
-  try {
-    const { contactNumber } = req.params;
-    const loanHistory = await LoanApplication.find({ contactNumber })
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: loanHistory.length,
-      data: loanHistory
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
+      message: error.message
     });
   }
 };
