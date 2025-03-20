@@ -40,7 +40,7 @@ exports.login = async (req, res) => {
   try {
     const { phoneNumber, password } = req.body;
 
-    // Get user with password
+    // Get user with password and role
     const user = await User.findOne({ phoneNumber }).select('+password +role');
     
     if (!user) {
@@ -114,10 +114,8 @@ exports.createAdmin = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find();
-    
     res.status(200).json({
       success: true,
-      count: users.length,
       data: users
     });
   } catch (error) {
@@ -132,7 +130,6 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-
     res.status(200).json({
       success: true,
       data: user
